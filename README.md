@@ -1,2 +1,2 @@
 # GL24_project
-The analysis for DE gene upon GL24 treatment 
+The analysis for DE genes upon GL24 treatment 
