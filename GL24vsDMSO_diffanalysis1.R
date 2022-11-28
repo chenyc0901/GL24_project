@@ -89,7 +89,6 @@ mergedata <- left_join(dgetable_Hs578T, G_list, by = c("gene_id"="ensembl_gene_i
 ##### To analysize result ######
 
 #To draw volcanoplot 
-proteincoding_data %>% glimpse()
 proteincoding_data <- mergedata %>% filter(mergedata$gene_biotype=="protein_coding")
 filtercondition <- abs(proteincoding_data$logFC_MDAMB157)>3 & 
                    abs(proteincoding_data$logFC_MDAMB231)>3 & 
@@ -98,7 +97,8 @@ filtercondition <- abs(proteincoding_data$logFC_MDAMB157)>3 &
 draw_volcanoplot <- function(cell){
                     logFC <- paste0("logFC_",cell)
                     FDR <- paste0("FDR_",cell)
-                    EnhancedVolcano(proteincoding_data,
+                    output <- paste0(cell,".pdf")
+                    volcanoplot <- EnhancedVolcano(proteincoding_data,
                                     lab=proteincoding_data$hgnc_symbol,
                                     selectLab=proteincoding_data[which(filtercondition),]$hgnc_symbol,
                                     xlab = bquote(~Log[2]~ 'fold change'),
@@ -113,6 +113,7 @@ draw_volcanoplot <- function(cell){
                                     widthConnectors = 0.75,
                                     colConnectors = 'black',
                                     max.overlaps = Inf)
+                   ggsave(volcanoplot, file=output, width=17 ,height=17, units="cm", device='pdf')
 }
 draw_volcanoplot("Hs578T")
 draw_volcanoplot("MDAMB231")
@@ -146,6 +147,7 @@ logCPM_mt_top20 %>% head()
 logCPM_mt_top20_transpose <- t(scale(t(logCPM_mt_top20)))
 col.pan <- colorpanel(100, "blue", "white", "red")
 logCPM_mt_top20
+pdf("heatmap.pdf")
 heatmap.2(logCPM_mt_top20_transpose, 
           col=col.pan, 
           Rowv=TRUE, 
@@ -158,5 +160,5 @@ heatmap.2(logCPM_mt_top20_transpose,
           cexCol=0.8, 
           lhei=c(2,10), 
           lwid=c(2,6))
-
+dev.off()
 
