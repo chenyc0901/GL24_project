@@ -7,6 +7,7 @@ library(VennDiagram)
 library(gplots)
 library(factoextra) # for PCA plot
 library(EnhancedVolcano)
+library(heatmap3)
 
 rm(list=ls())
 set.seed(100)
@@ -33,7 +34,7 @@ corrplot.mixed(cor(lcpm), tl.col = "black", upper = "pie", tl.pos = "lt", number
 
 #PCA plot
 pca <- prcomp(t(lcpm),scale=TRUE)
-pdf("PCAplot.pdf")
+pdf("PCAplot1.pdf")
 grp <- factor(y$samples$group)
 eig.val <- get_eigenvalue(pca)
 head(eig.val, n = 10L)
@@ -47,6 +48,7 @@ fviz_pca_ind(pca,
              repel = TRUE     # Avoid text overlapping
 )+scale_color_brewer(palette="Set1") +
   theme_minimal()
+dev.off()
 
 # fit model
 fit <- glmQLFit(y,design)
@@ -149,45 +151,40 @@ logCPM_mt <- logCPM %>%
   as.matrix()
 
 #filter condition(MDAMB231,MDAMB157): FDR <10e-5, logFC > 2
-mdamb231_top20.list <- proteincoding_data %>% 
+gene_top20.list <- proteincoding_data %>% 
                    dplyr::filter(FDR_MDAMB231 < 10e-5 & 
                                  FDR_MDAMB157 < 10e-5 & 
-                                 abs(logFC_MDAMB231)> 2 & 
-                                 abs(logFC_MDAMB157) > 2 ) %>% 
-                   dplyr::arrange(FDR_MDAMB231) %>%
-                   slice(1:20) %>% 
-                   mutate(name=paste(.$gene_id, .$hgnc_symbol, sep=";")) %>% 
-                   .$name %>% 
-                   as.character()
-       
-mdamb157_top20.list <- proteincoding_data %>% 
-                   dplyr::filter(FDR_MDAMB231 < 10e-5 & 
-                                   FDR_MDAMB157 < 10e-5 & 
-                                   abs(logFC_MDAMB231)> 2 & 
-                                   abs(logFC_MDAMB157) > 2 ) %>% 
-                   dplyr::arrange(FDR_MDAMB157) %>% 
-                   slice(1:20) %>% 
-                   mutate(name=paste(.$gene_id, .$hgnc_symbol, sep=";")) %>% 
+                                 abs(logFC_MDAMB231)> 3 & 
+                                 abs(logFC_MDAMB157) > 3 ) %>% 
+                   mutate(name=paste(.$gene_id, .$hgnc_symbol, sep=";")) %>%
                    .$name %>% 
                    as.character()
 
-overlap <- union(mdamb231_top20.list, mdamb157_top20.list)
-overlap %>% str() #24 genes
+gene_top20.list %>% str()
 
-logCPM_mt_top20 <- logCPM_mt[overlap,]
+
+
+
+
+
+
+
+
+logCPM_mt_top20 <- logCPM_mt[gene_top20.list,]
 logCPM_mt_top20 %>% head()
 logCPM_mt_top20_transpose <- t(scale(t(logCPM_mt_top20)))
 col.pan <- colorpanel(100, "blue", "white", "red")
 
 pdf("heatmap.pdf")
-heatmap.2(logCPM_mt_top20_transpose, 
+ColSideColors <- cbind(Treatment=rep(c("orange", "green"), each=5, times=3),Cell_type=c(rep("brown1",10),rep("mediumpurple2",20)))
+heatmap3(logCPM_mt_top20_transpose, 
           col=col.pan, 
           Rowv=TRUE,
-          Colv=FALSE,
+          Colv=TRUE,
           scale="none",
           trace="none", 
-          dendrogram="row",
-          ColSideColors = rep(c("orange", "green"), each=5, times=3), 
+          dendrogram="both",
+          ColSideColors = ColSideColors, 
           density.info="none", 
           margin=c(10,9),
           cexRow=0.7,
@@ -195,4 +192,3 @@ heatmap.2(logCPM_mt_top20_transpose,
           lhei=c(2,10), 
           lwid=c(2,6))
 dev.off()
-
