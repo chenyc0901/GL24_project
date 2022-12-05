@@ -150,8 +150,8 @@ logCPM_mt <- logCPM %>%
   dplyr::select(-c(gene_id,entrezgene_id,gene_biotype,hgnc_symbol)) %>% 
   as.matrix()
 
-#filter condition(MDAMB231,MDAMB157): FDR <10e-5, logFC > 2
-gene_top20.list <- proteincoding_data %>% 
+#filter condition(MDAMB231,MDAMB157): FDR <10e-5, logFC > 3
+gene.list <- proteincoding_data %>% 
                    dplyr::filter(FDR_MDAMB231 < 10e-5 & 
                                  FDR_MDAMB157 < 10e-5 & 
                                  abs(logFC_MDAMB231)> 3 & 
@@ -160,35 +160,21 @@ gene_top20.list <- proteincoding_data %>%
                    .$name %>% 
                    as.character()
 
-gene_top20.list %>% str()
-
-
-
-
-
-
-
-
-
-logCPM_mt_top20 <- logCPM_mt[gene_top20.list,]
-logCPM_mt_top20 %>% head()
-logCPM_mt_top20_transpose <- t(scale(t(logCPM_mt_top20)))
+gene.list %>% str()
+logCPM_mt <- logCPM_mt[gene.list,]
+logCPM_mt%>% head()
+logCPM_mt_transpose <- t(scale(t(logCPM_mt)))
 col.pan <- colorpanel(100, "blue", "white", "red")
 
 pdf("heatmap.pdf")
 ColSideColors <- cbind(Treatment=rep(c("orange", "green"), each=5, times=3),Cell_type=c(rep("brown1",10),rep("mediumpurple2",20)))
-heatmap3(logCPM_mt_top20_transpose, 
+heatmap3(logCPM_mt_transpose, 
           col=col.pan, 
           Rowv=TRUE,
           Colv=TRUE,
           scale="none",
-          trace="none", 
-          dendrogram="both",
           ColSideColors = ColSideColors, 
-          density.info="none", 
           margin=c(10,9),
           cexRow=0.7,
-          cexCol=0.8, 
-          lhei=c(2,10), 
-          lwid=c(2,6))
+          cexCol=0.8)
 dev.off()
