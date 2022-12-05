@@ -144,30 +144,50 @@ rownames(logCPM) <- logCPM %>%
   mutate(name = paste(.$gene_id, .$hgnc_symbol, sep=";")) %>% 
   .$name
 
-logCPM %>% str()
 logCPM_mt <- logCPM %>%
   dplyr::select(-c(gene_id,entrezgene_id,gene_biotype,hgnc_symbol)) %>% 
   as.matrix()
-#filter condition(MDAMB231,MDAMB157): FDR <10e-5, logFC > 3
-o  <- as.character(proteincoding_data %>% 
-                     dplyr::filter(FDR_MDAMB231 < 10e-5 & FDR_MDAMB157 < 10e-5  & abs(logFC_MDAMB231)> 3 & abs(logFC_MDAMB157) > 3 ) %>% 
-                     dplyr::arrange(FDR_MDAMB231,FDR_MDAMB157) %>%
-                     mutate(name=paste(.$gene_id,.$hgnc_symbol,sep=";")) %>%  
-                     .$name)
 
-o %>% str()# 113
-logCPM_mt_top20 <- logCPM_mt[o[1:20],]
+#filter condition(MDAMB231,MDAMB157): FDR <10e-5, logFC > 2
+mdamb231_top20.list <- proteincoding_data %>% 
+                   dplyr::filter(FDR_MDAMB231 < 10e-5 & 
+                                 FDR_MDAMB157 < 10e-5 & 
+                                 abs(logFC_MDAMB231)> 2 & 
+                                 abs(logFC_MDAMB157) > 2 ) %>% 
+                   dplyr::arrange(FDR_MDAMB231) %>%
+                   slice(1:20) %>% 
+                   mutate(name=paste(.$gene_id, .$hgnc_symbol, sep=";")) %>% 
+                   .$name %>% 
+                   as.character()
+       
+mdamb157_top20.list <- proteincoding_data %>% 
+                   dplyr::filter(FDR_MDAMB231 < 10e-5 & 
+                                   FDR_MDAMB157 < 10e-5 & 
+                                   abs(logFC_MDAMB231)> 2 & 
+                                   abs(logFC_MDAMB157) > 2 ) %>% 
+                   dplyr::arrange(FDR_MDAMB157) %>% 
+                   slice(1:20) %>% 
+                   mutate(name=paste(.$gene_id, .$hgnc_symbol, sep=";")) %>% 
+                   .$name %>% 
+                   as.character()
+
+overlap <- union(mdamb231_top20.list, mdamb157_top20.list)
+overlap %>% str() #24 genes
+
+logCPM_mt_top20 <- logCPM_mt[overlap,]
 logCPM_mt_top20 %>% head()
 logCPM_mt_top20_transpose <- t(scale(t(logCPM_mt_top20)))
 col.pan <- colorpanel(100, "blue", "white", "red")
-logCPM_mt_top20
+
 pdf("heatmap.pdf")
 heatmap.2(logCPM_mt_top20_transpose, 
           col=col.pan, 
-          Rowv=TRUE, 
+          Rowv=TRUE,
+          Colv=FALSE,
           scale="none",
           trace="none", 
-          dendrogram="both", 
+          dendrogram="row",
+          ColSideColors = rep(c("orange", "green"), each=5, times=3), 
           density.info="none", 
           margin=c(10,9),
           cexRow=0.7,
