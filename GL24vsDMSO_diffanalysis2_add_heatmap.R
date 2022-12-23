@@ -6,11 +6,13 @@ library(org.Hs.eg.db)
 library(clusterProfiler)
 library(statmod)
 library(EnhancedVolcano)
+library(R.utils)# This package is used for download kegg
+library(pathview)#for KEGG plot
 
 rm(list=ls())
 set.seed(100)
 # readcount data from RSEM (expected counts)
-data  <-  read.delim(file="gene_readcount_raw_231vs157.txt", header = TRUE, row.names = 1)
+data  <-  read.delim(file="gene_readcount_157_231.txt", header = TRUE, row.names = 1)
 groups <-  factor(rep(c("MDAMB157_DMSO", "MDAMB157_GL24", "MDAMB231_DMSO", "MDAMB231_GL24"), each = 5))
 cells <- factor(rep(c("MDAMB157", "MDAMB231"), each=10))
 treat <- factor(rep(c("DMSO", "GL24"), each=5, times=2), levels=c("DMSO","GL24"))
@@ -57,7 +59,7 @@ proteincoding_data %>% dim() #14059 29
 ##### To analyze result #######
 #To draw volcano plot
 #filter condition: logFC >3, and FDR<10e-7
-filtercondition <- abs(proteincoding_data$logFC)>4 & proteincoding_data$FDR<10e-7
+filtercondition <- abs(proteincoding_data$logFC)>1 & proteincoding_data$FDR<0.01
 
 pdf("difftreat_normalizedCell_volcano.pdf",width=12, height=12)
 EnhancedVolcano(proteincoding_data,
@@ -101,7 +103,7 @@ gsea_hallmark_table %>% glimpse()
 geneset <- mergedata %>% 
   dplyr::filter(FDR < 0.01,abs(logFC)>1, gene_biotype == "protein_coding" & hgnc_symbol!="")
 geneset %>% dim() # 2342 genes for GO analysis
-ora_GO <-  enrichGO(
+ora_GO_BP <-  enrichGO(
   gene = geneset$gene_id,
   OrgDb = org.Hs.eg.db,
   keyType= "ENSEMBL",
@@ -109,9 +111,49 @@ ora_GO <-  enrichGO(
   pAdjustMethod = "BH",
 )
 # GO result :ora_GO@result
+ora_GO_CC <-  enrichGO(
+  gene = geneset$gene_id,
+  OrgDb = org.Hs.eg.db,
+  keyType= "ENSEMBL",
+  ont = "CC",
+  pAdjustMethod = "BH",
+)
+
+ora_GO_MF <-  enrichGO(
+  gene = geneset$gene_id,
+  OrgDb = org.Hs.eg.db,
+  keyType= "ENSEMBL",
+  ont = "MF",
+  pAdjustMethod = "BH",
+)
+
+#Draw GO plot
+GO_draw <- function(file, n , name){
+  result <- file %>% as_tibble() %>% arrange(p.adjust, desc=TRUE) %>% slice(1:n)
+  plot <- ggplot(result,aes(x= reorder(Description,Count), y= Count, fill=p.adjust))+ 
+  geom_bar(stat="identity")+
+  coord_flip()+
+  labs(x="",y="Gene numbers", title= name)+
+  theme_classic()+
+  scale_y_continuous(expand=c(0,0))+
+  scale_fill_gradient(low="blue", high="red")
+  ggsave(plot, file=paste(name,".pdf"), width=17, height=17, units="cm", device="pdf")
+}
+GO_draw(ora_GO_BP, 15, "Biological Processes TOP 15")
+GO_draw(ora_GO_CC, 15, "Cellualr Components TOP 15")
+GO_draw(ora_GO_MF, 15, "Molecular Functions TOP 15")
+
+
+GO_draw(ora_GO_BP, 10, "Biological Processes TOP 10")
+GO_draw(ora_GO_CC, 10, "Cellualr Components TOP 10")
+GO_draw(ora_GO_MF, 10, "Molecular Functions TOP 10")
+
+
+
+
+
 
 ### KEGG analysis###
-library(R.utils)# This package is used for download kegg
 R.utils::setOption("clusterProfiler.download.method","auto")
 # To get ENTRENSID id for enrichKEGG
 ENSEMBL  <- geneset$gene_id
@@ -125,11 +167,17 @@ kegg_GO  <- enrichKEGG(
 )
 #KEGG_result: kegg_GO@result
 
+GO_draw(kegg_GO, 15, "KEGG Pathways TOP 15")
+GO_draw(kegg_GO, 10, "KEGG Pathways TOP 10")
 
+#KEGG pathway view
+#p53 pathway=hsa04115, TGF-beta signaling pathway = hsa04350, cell cycle = hsa04110
+pathview(gene.data=geneList, pathway.id="hsa04115", species = 'hsa')
+pathview(gene.data=geneList, pathway.id="hsa04350", species = 'hsa')
+pathview(gene.data=geneList, pathway.id="hsa04110", species = 'hsa')
 
 
 #heatmap for GO
-
 list <- ora_GO@result %>% top_n(15,Count) %>% select(geneID)
 filter_list <- list %>% map(str_split,pattern="/") %>% unlist() %>% unique()
 filter_list %>% str() #608
